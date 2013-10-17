@@ -1,5 +1,5 @@
 __author__ = 'Vital Kolas'
-__version__ = '0.2'
+__version__ = '0.2.1'
 __date__ = '2013-07-04'
 
 import re
@@ -201,7 +201,7 @@ class MixcloudTrack:
         page = self.page()
 
         self.name = re.search('<h1[^>]*?cloudcast-name[^>]*>([^<]+)<', page).group(1)
-        self.owner = re.search('<a[^>]*?cloudcast-owner-link[^>]*>([^<]+)<', page).group(1)
+        self.owner = re.search('<a[^>]*?cloudcast-owner-link[^>]*><span itemprop="name">([^<]+)<', page).group(1)
 
         titles = re.findall('(?<=class="tracklisttrackname mx-link">)[^<]*', page)
         artists = re.findall('(?<=class="tracklistartistname mx-link">)[^<]*', page)
@@ -211,7 +211,7 @@ class MixcloudTrack:
 
 
 if __name__ == '__main__':
-    track_url = 'http://www.mixcloud.com/vplusplus/bicycle-day-with-oblank/'
+    track_url = 'http://www.mixcloud.com/vplusplus/drifting-mind/'
     track = MixcloudTrack(track_url)
 
     cue = CueMetadataFile(track.name.replace(' ', '_'), track.name, track.owner, track.tracklist)
