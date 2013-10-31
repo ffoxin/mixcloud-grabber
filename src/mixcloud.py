@@ -3,7 +3,8 @@ __version__ = '0.2.1'
 __date__ = '2013-07-04'
 
 import re
-from urllib import request, error
+from urllib import request, error, parse
+import os
 
 
 class CueMetadataIndex:
@@ -12,6 +13,7 @@ class CueMetadataIndex:
         @type start: str
         @param start: track offset from beginning, in seconds
         """
+
         self.start = int(start)
 
     def print(self):
@@ -59,10 +61,10 @@ class CueMetadataPerformer:
 
 
 class CueMetadataTrack:
-    def __init__(self, orderNumber, title, performer, index):
+    def __init__(self, order_number, title, performer, index):
         """
-        @type orderNumber: int
-        @param orderNumber: track number in file
+        @type order_number: int
+        @param order_number: track number in file
         @type title: str
         @param title: track name
         @type performer: str
@@ -70,7 +72,7 @@ class CueMetadataTrack:
         @type index: str
         @param index: track offset from beginning, in seconds
         """
-        self.orderNumber = orderNumber
+        self.order_number = order_number
         self.title = CueMetadataTitle(title)
         self.performer = CueMetadataPerformer(performer)
         self.index = CueMetadataIndex(index)
@@ -82,7 +84,7 @@ class CueMetadataTrack:
         """
         item = '    {}\n'
 
-        result = '  TRACK {}.mp3 AUDIO\n'.format(self.orderNumber)
+        result = '  TRACK {}.mp3 AUDIO\n'.format(self.order_number)
         result += item.format(self.title.print())
         result += item.format(self.performer.print())
         result += item.format(self.index.print())
@@ -91,15 +93,15 @@ class CueMetadataTrack:
 
 
 class CueMetadataTracklist:
-    def __init__(self, trackList):
+    def __init__(self, tracklist):
         """
-        @type trackList: []
+        @type tracklist: []
         """
-        self.trackList = []
+        self.tracklist = []
         n = 0
-        for track in trackList:
+        for track in tracklist:
             n += 1
-            self.trackList.append(CueMetadataTrack(n, track[0], track[1], track[2]))
+            self.tracklist.append(CueMetadataTrack(n, track[0], track[1], track[2]))
 
     def print(self):
         """
@@ -107,7 +109,7 @@ class CueMetadataTracklist:
         @return: list of tracks in cue format
         """
         result = ''
-        for track in self.trackList:
+        for track in self.tracklist:
             result += track.print()
 
         return result
@@ -145,24 +147,29 @@ class CueMetadataFile:
 
 
 class MixcloudTrack:
-    def __init__(self, url):
+    def __init__(self, track_url):
         """
-        @type url: str
-        @param url: link to track at mixcloud.com
+        @type track_url: str
+        @param track_url: link to track at mixcloud.com
         """
-        self.url = url
-        self.getDownloadLink(30)
-        self.loadPlaylistInfo()
+        self.download_link = ''
+        self.name = ''
+        self.owner = ''
+        self.tracklist = None
+
+        self.url = track_url
+        self.get_download_link(30)
+        self.load_playlist_info()
 
     def page(self):
         """
         @rtype: str
         @return: html page
         """
-        with request.urlopen(self.url) as url:
-            data = url.read()
-        sData = data.decode('utf-8', 'strict')
-        return sData
+        with request.urlopen(self.url) as track_url:
+            data = track_url.read()
+        data_string = data.decode('utf-8', 'strict')
+        return data_string
 
     def id(self):
         """
@@ -176,28 +183,28 @@ class MixcloudTrack:
 
         return track_id
 
-    def getDownloadLink(self, nServers):
+    def get_download_link(self, server_count):
         """
-        @type nServers: number
-        @param nServers: maximum number of servers to be checked
+        @type server_count: number
+        @param server_count: maximum number of servers to be checked
         @rtype: str
         @return: direct link to mp3 file
         """
         download_template = 'http://stream{0}.mixcloud.com/cloudcasts/originals/' + self.id()
 
-        downloadLink = ''
-        for i in range(nServers):
-            downloadLink = download_template.format(i)
+        download_link = ''
+        for i in range(server_count):
+            download_link = download_template.format(i)
             try:
-                request.urlopen(downloadLink)
+                request.urlopen(download_link)
             except error.URLError:
                 pass
             else:
                 break
 
-        self.downloadLink = downloadLink
+        self.download_link = download_link
 
-    def loadPlaylistInfo(self):
+    def load_playlist_info(self):
         page = self.page()
 
         self.name = re.search('<h1[^>]*?cloudcast-name[^>]*>([^<]+)<', page).group(1)
@@ -210,12 +217,56 @@ class MixcloudTrack:
         self.tracklist = zip(titles, artists, durations)
 
 
+def download_file(file_url, desc=None):
+    u = request.urlopen(file_url)
+
+    scheme, netloc, path, query, fragment = parse.urlsplit(file_url)
+    file_name = os.path.basename(path)
+    if not file_name:
+        file_name = 'downloaded.file'
+    if desc:
+        file_name = os.path.join(desc, file_name)
+
+    with open(file_name, 'wb') as f:
+        meta = u.info()
+        meta_func = meta.getheaders if hasattr(meta, 'getheaders') else meta.get_all
+        meta_length = meta_func("Content-Length")
+        file_size = None
+        if meta_length:
+            file_size = int(meta_length[0])
+        print("Downloading: {0} Bytes: {1}".format(file_url, file_size))
+
+        file_size_dl = 0
+        block_sz = 8192
+        while True:
+            buffer = u.read(block_sz)
+            if not buffer:
+                break
+
+            file_size_dl += len(buffer)
+            f.write(buffer)
+
+            status = "{0:16}".format(file_size_dl)
+            if file_size:
+                status += "   [{0:6.2f}%]".format(file_size_dl * 100 / file_size)
+            status += chr(13)
+            print(status, end="")
+        print()
+
+    return file_name
+
 if __name__ == '__main__':
-    track_url = 'http://www.mixcloud.com/vplusplus/drifting-mind/'
-    track = MixcloudTrack(track_url)
 
-    cue = CueMetadataFile(track.name.replace(' ', '_'), track.name, track.owner, track.tracklist)
+    #track_url = 'http://www.mixcloud.com/vplusplus/drifting-mind/'
+    #track = MixcloudTrack(track_url)
 
-    print('Download link:\n{}\n'.format(track.downloadLink))
-    print('Save as...\n{}\n'.format(cue.file + '.mp3'))
-    print('Cue file:\n{}\n\n{}\n'.format(cue.file + '.cue', cue.print()))
+    #cue = CueMetadataFile(track.name.replace(' ', '_'), track.name, track.owner, track.tracklist)
+
+    #print('Download link:\n{}\n'.format(track.downloadLink))
+    #print('Save as...\n{}\n'.format(cue.file + '.mp3'))
+    #print('Cue file:\n{}\n\n{}\n'.format(cue.file + '.cue', cue.print()))
+
+
+    url = "http://download.thinkbroadband.com/10MB.zip"
+    filename = download_file(url)
+    print(filename)
