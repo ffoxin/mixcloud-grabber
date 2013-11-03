@@ -38,14 +38,14 @@ class CueMetadataPerformer:
     def __init__(self, performer):
         """
         @type performer: str
-        @param performer: artist name
+        @param performer: performer (artist) name
         """
         self.performer = performer
 
     def print(self):
         """
         @rtype: str
-        @return: artist name in cue format
+        @return: performer (artist) name in cue format
         """
         result = 'PERFORMER "{}"'.format(self.performer)
         return result
