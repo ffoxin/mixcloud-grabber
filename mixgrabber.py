@@ -1,6 +1,6 @@
 __author__ = 'Vital Kolas'
-__version__ = '0.3.*'
-__date__ = '2013-11-01'
+__version__ = '0.3.0'
+__date__ = '2013-11-04'
 
 import os
 import shutil
