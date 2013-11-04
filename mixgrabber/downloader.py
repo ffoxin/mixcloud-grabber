@@ -1,40 +1,54 @@
 import os
+import math
 from urllib import request, parse
 
 
-def download_file(file_url, file_name=None):
-    u = request.urlopen(file_url)
+class Downloader:
+    def __init__(self, dl_block_size=0xFFFF):
+        """
+        @type dl_block_size: int
+        @param dl_block_size: block size while downloading file
+        """
+        self.block_size = dl_block_size
 
-    scheme, netloc, path, query, fragment = parse.urlsplit(file_url)
-    if not file_name:
-        file_name = os.path.basename(path)
-    if not file_name:
-        file_name = 'downloaded.file'
+    def save_as(self, url, file_name=None):
+        """
+        @type url: str
+        @param url: file url to be downloaded
+        @type file_name: str
+        @param file_name: file name to be saved as
+        """
+        url_meta = request.urlopen(url)
+        url_real = url_meta.geturl()
 
-    with open(file_name, 'wb') as f:
-        meta = u.info()
-        meta_func = meta.getheaders if hasattr(meta, 'getheaders') else meta.get_all
-        meta_length = meta_func("Content-Length")
-        file_size = None
-        if meta_length:
-            file_size = int(meta_length[0])
-        print("Downloading: {0} Bytes: {1}".format(file_url, file_size))
+        scheme, netloc, path, query, fragment = parse.urlsplit(url_real)
+        if not file_name:
+            file_name = os.path.basename(path)
+        if not file_name:
+            file_name = 'mixcloud_track.mp3'
 
-        file_size_dl = 0
-        block_sz = 8192
-        while True:
-            buffer = u.read(block_sz)
-            if not buffer:
-                break
+        with open(file_name, 'wb') as dl_file:
+            meta = url_meta.info()
+            meta_func = meta.getheaders if hasattr(meta, 'getheaders') else meta.get_all
+            meta_length = meta_func("Content-Length")
+            file_size = int(meta_length[0]) if meta_length else 0
+            print("Downloading: {0} Bytes: {1}".format(file_name, file_size))
 
-            file_size_dl += len(buffer)
-            f.write(buffer)
+            downloaded = 0
+            size_length = int(math.log10(file_size)) + 1
+            while True:
+                buffer = url_meta.read(self.block_size)
+                if not buffer:
+                    break
 
-            status = "{0:16}".format(file_size_dl)
-            if file_size:
-                status += "   [{0:6.2f}%]".format(file_size_dl * 100 / file_size)
-            status += chr(13)
-            print(status, end="")
-        print()
+                downloaded += len(buffer)
+                dl_file.write(buffer)
 
-    return file_name
+                status = repr(downloaded).rjust(size_length)
+                if file_size:
+                    status += " [{0:.2f}%]".format(downloaded * 100 / file_size)
+                status += chr(13)
+                print(status, end="")
+            print()
+
+        return file_name

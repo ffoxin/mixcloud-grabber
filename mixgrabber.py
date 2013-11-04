@@ -1,31 +1,33 @@
 __author__ = 'Vital Kolas'
-__version__ = '0.3.0'
+__version__ = '0.3.*'
 __date__ = '2013-11-01'
 
 import os
-from cuemeta import CueMetadataFile
-from mixcloud import MixcloudTrack
+import shutil
+from mixgrabber.cuemeta import CueMetadataFile
+from mixgrabber.mixcloud import MixcloudTrack
+from mixgrabber.downloader import Downloader
 
 
 if __name__ == '__main__':
-    mixcloud_url = 'http://www.mixcloud.com/vplusplus/drifting-mind/'
-    track = MixcloudTrack(mixcloud_url)
+    mixcloud_url = 'http://www.mixcloud.com/spookybizzle/spookys-short-n-sweet-uk-garage-mix/'
 
-    cue = CueMetadataFile(track.name.replace(' ', '_'), track.name, track.owner, track.tracklist)
+    # get track web page and extract metadata
+    mixcloud_track = MixcloudTrack(mixcloud_url)
 
-    link = track.download_link
-    title = cue.file
-    cue_name = '{}.cue'.format(title)
-    track_name = '{name}{ext}'.format(name=title, ext=os.path.splitext(link)[1])
-    print(title)
-    print(cue_name)
-    print(track_name)
+    # create directory for track and playlist
+    mix_name = mixcloud_track.name
+    if os.path.exists(mix_name):
+        shutil.rmtree(mix_name)
+    os.mkdir(mix_name)
+    os.chdir(mix_name)
 
-    #print('Download link:\n{}\n'.format(track.download_link))
-    #print('Save as...\n{}\n'.format(cue.file + '.mp3'))
-    #print('Cue file:\n{}\n\n{}\n'.format(cue.file + '.cue', cue.print()))
+    # download track
+    track_link = mixcloud_track.download_link
+    track_name = mix_name + os.path.splitext(track_link)[1]
 
+    downloader = Downloader()
+    downloader.save_as(track_link, track_name)
 
-    #url = "http://download.thinkbroadband.com/10MB.zip"
-    #filename = download_file(url)
-    #print(filename)
+    cue_metadata = CueMetadataFile(mixcloud_track.name, mixcloud_track.owner, mixcloud_track.tracklist)
+    cue_metadata.save()

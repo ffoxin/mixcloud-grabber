@@ -10,7 +10,7 @@ class CueMetadataIndex:
     def print(self):
         """
         @rtype: str
-        @return: track offset in cue format
+        @return: track time offset in cue format
         """
         m, s = divmod(self.start, 60)
         result = 'INDEX 01 {mm:02}:{ss:02}:00'.format(mm=m, ss=s)
@@ -107,10 +107,8 @@ class CueMetadataTracklist:
 
 
 class CueMetadataFile:
-    def __init__(self, file, title, performer, tracklist):
+    def __init__(self, title, performer, tracklist):
         """
-        @type file: str
-        @param file: file name (without extension)
         @type title: str
         @param title: tracklist name
         @type performer: str
@@ -118,7 +116,7 @@ class CueMetadataFile:
         @type tracklist: zip
         @param tracklist: tracks' metadata
         """
-        self.file = file
+        self.track_name = title
         self.title = CueMetadataTitle(title)
         self.performer = CueMetadataPerformer(performer)
         self.tracklist = CueMetadataTracklist(tracklist)
@@ -135,3 +133,9 @@ class CueMetadataFile:
         result += self.tracklist.print()
 
         return result
+
+    def save(self):
+        file_name = self.track_name + '.cue'
+
+        with open(file_name, 'w') as cue_file:
+            cue_file.write(self.print())

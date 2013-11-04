@@ -1,12 +1,15 @@
+import html.parser
 import re
 from urllib import error, request
 
 
 class MixcloudTrack:
-    def __init__(self, url):
+    def __init__(self, url, server_count=30):
         """
         @type url: str
         @param url: link to track at mixcloud.com
+        @type server_count: int
+        @param server_count: maximum server index
         """
         self.download_link = ''
         self.name = ''
@@ -14,7 +17,7 @@ class MixcloudTrack:
         self.tracklist = None
 
         self.url = url
-        self.get_download_link(30)
+        self.get_download_link(server_count)
         self.load_playlist_info()
 
     def page(self):
@@ -63,8 +66,16 @@ class MixcloudTrack:
     def load_playlist_info(self):
         page = self.page()
 
-        self.name = re.search('<h1[^>]*?cloudcast-name[^>]*>([^<]+)<', page).group(1)
-        self.owner = re.search('<a[^>]*?cloudcast-owner-link[^>]*><span itemprop="name">([^<]+)<', page).group(1)
+        # sometimes mixcloud's page layout changes
+        # so that regexp's below need some fixes
+        # 2013-11-04
+        name = re.search('<h1[^>]*?cloudcast-name[^>]*>([^<]+)<', page).group(1)
+        owner = re.search('<a[^>]*?cloudcast-owner-link[^>]*><span itemprop="name">([^<]+)<', page).group(1)
+
+        self.name = html.parser.HTMLParser().unescape(name)
+        print(self.name)
+        self.owner = html.parser.HTMLParser().unescape(owner)
+        print(self.owner)
 
         titles = re.findall('(?<=class="tracklisttrackname mx-link">)[^<]*', page)
         artists = re.findall('(?<=class="tracklistartistname mx-link">)[^<]*', page)
