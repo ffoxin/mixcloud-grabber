@@ -4,7 +4,6 @@ class CueMetadataIndex:
         @type start: str
         @param start: track offset from beginning, in seconds
         """
-
         self.start = int(start)
 
     def print(self):
@@ -75,7 +74,7 @@ class CueMetadataTrack:
         """
         item = '    {}\n'
 
-        result = '  TRACK {}.mp3 AUDIO\n'.format(self.order_number)
+        result = '  TRACK {} AUDIO\n'.format(self.order_number)
         result += item.format(self.title.print())
         result += item.format(self.performer.print())
         result += item.format(self.index.print())
@@ -127,7 +126,7 @@ class CueMetadataFile:
         @result: playlist in cue format
         """
         line = '{}\n'
-        result = 'FILE "{}" MP3\n'.format(self.file)
+        result = 'FILE "{}.mp3" MP3\n'.format(self.track_name)
         result += line.format(self.title.print())
         result += line.format(self.performer.print())
         result += self.tracklist.print()
@@ -139,3 +138,5 @@ class CueMetadataFile:
 
         with open(file_name, 'w') as cue_file:
             cue_file.write(self.print())
+
+        print('Playlist "{}" created'.format(file_name))

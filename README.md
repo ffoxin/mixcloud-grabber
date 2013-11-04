@@ -1,4 +1,6 @@
 mixcloud-grabber
 ================
 
-download mixcloud track and save as .mp3 file + .cue playlist
+Download mixcloud track and save as .mp3 file + .cue playlist.
+
+Run script to see usage info.

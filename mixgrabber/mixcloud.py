@@ -67,18 +67,20 @@ class MixcloudTrack:
         page = self.page()
 
         # sometimes mixcloud's page layout changes
-        # so that regexp's below need some fixes
         # 2013-11-04
         name = re.search('<h1[^>]*?cloudcast-name[^>]*>([^<]+)<', page).group(1)
         owner = re.search('<a[^>]*?cloudcast-owner-link[^>]*><span itemprop="name">([^<]+)<', page).group(1)
 
-        self.name = html.parser.HTMLParser().unescape(name)
-        print(self.name)
-        self.owner = html.parser.HTMLParser().unescape(owner)
-        print(self.owner)
+        parser = html.parser.HTMLParser()
+
+        self.name = parser.unescape(name)
+        self.owner = parser.unescape(owner)
 
         titles = re.findall('(?<=class="tracklisttrackname mx-link">)[^<]*', page)
         artists = re.findall('(?<=class="tracklistartistname mx-link">)[^<]*', page)
         durations = re.findall('(?<=data-sectionstart=")\d+(?=">)', page)
+
+        titles = [parser.unescape(title) for title in titles]
+        artists = [parser.unescape(artist) for artist in artists]
 
         self.tracklist = zip(titles, artists, durations)
