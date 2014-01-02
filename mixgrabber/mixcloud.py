@@ -49,7 +49,7 @@ class MixcloudTrack:
         @rtype: str
         @return: direct link to mp3 file
         """
-        download_template = 'http://stream{0}.mixcloud.com/cloudcasts/originals/' + self.id()
+        download_template = 'http://stream{0}.mixcloud.com/c/originals/' + self.id()
 
         download_link = ''
         for i in range(server_count):
