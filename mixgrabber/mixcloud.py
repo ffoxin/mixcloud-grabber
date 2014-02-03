@@ -1,4 +1,4 @@
-import html.parser
+import json
 import re
 from urllib import error, request
 
@@ -16,7 +16,8 @@ class MixcloudTrack:
         self.owner = ''
         self.tracklist = None
 
-        self.url = url
+        self.track_url = url
+        self.meta_url = url.replace('http://www.mixcloud.com/', 'http://api.mixcloud.com/', 1)
         self.get_download_link(server_count)
         self.load_playlist_info()
 
@@ -25,7 +26,7 @@ class MixcloudTrack:
         @rtype: str
         @return: html page
         """
-        with request.urlopen(self.url) as track_url:
+        with request.urlopen(self.track_url) as track_url:
             data = track_url.read()
         data_string = data.decode('utf-8', 'strict')
         return data_string
@@ -36,9 +37,9 @@ class MixcloudTrack:
         @return: track id
         """
         track_id = ''
-        preview_url = re.search('(?<=\.mixcloud\.com/previews/)[^\.]+\.mp3', self.page())
+        preview_url = re.search('(?<=\.mixcloud\.com/previews/)([^\.]+\.mp3)', self.page())
         if preview_url:
-            track_id = preview_url.group(0)
+            track_id = preview_url.group(0).replace('mp3', 'm4a')
 
         return track_id
 
@@ -49,7 +50,7 @@ class MixcloudTrack:
         @rtype: str
         @return: direct link to mp3 file
         """
-        download_template = 'http://stream{0}.mixcloud.com/cloudcasts/originals/' + self.id()
+        download_template = 'http://stream{0}.mixcloud.com/c/m4a/64/' + self.id()
 
         download_link = ''
         for i in range(server_count):
@@ -64,23 +65,21 @@ class MixcloudTrack:
         self.download_link = download_link
 
     def load_playlist_info(self):
-        page = self.page()
+        """
+        @rtype: list
+        @return: list of (track, artist) pairs
+        """
+        with request.urlopen(self.meta_url) as meta_url:
+            meta_data = meta_url.read()
+            meta_json = meta_data.decode('utf-8', 'strict')
+            meta = json.loads(meta_json)
 
-        # sometimes mixcloud's page layout changes
-        # 2013-11-04
-        name = re.search('<h1[^>]*?cloudcast-name[^>]*>([^<]+)<', page).group(1)
-        owner = re.search('<a[^>]*?cloudcast-owner-link[^>]*><span itemprop="name">([^<]+)<', page).group(1)
+        self.name = meta['name']
+        self.owner = meta['user']['username']
+        self.length = meta['audio_length']
 
-        parser = html.parser.HTMLParser()
-
-        self.name = parser.unescape(name)
-        self.owner = parser.unescape(owner)
-
-        titles = re.findall('(?<=class="tracklisttrackname mx-link">)[^<]*', page)
-        artists = re.findall('(?<=class="tracklistartistname mx-link">)[^<]*', page)
-        durations = re.findall('(?<=data-sectionstart=")\d+(?=">)', page)
-
-        titles = [parser.unescape(title) for title in titles]
-        artists = [parser.unescape(artist) for artist in artists]
-
-        self.tracklist = zip(titles, artists, durations)
+        self.tracklist = [
+            (section['position'], section['track']['artist']['name'], section['track']['name'], int(0))
+            for section
+            in meta['sections']
+        ]

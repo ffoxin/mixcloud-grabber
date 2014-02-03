@@ -1,83 +1,77 @@
-class CueMetadataIndex:
+class CueOffset:
     def __init__(self, start):
         """
-        @type start: str
-        @param start: track offset from beginning, in seconds
+        :type start: int
+        :param start: track offset, in seconds
         """
-        self.start = int(start)
+        self.start = start
 
     def print(self):
         """
-        @rtype: str
-        @return: track time offset in cue format
+        :rtype: str
+        :return: track offset in cue format
         """
         m, s = divmod(self.start, 60)
         result = 'INDEX 01 {mm:02}:{ss:02}:00'.format(mm=m, ss=s)
         return result
 
 
-class CueMetadataTitle:
+class CueTitle:
     def __init__(self, title):
         """
-        @type title: str
-        @param title: track name
+        :type title: str
+        :param title: track name
         """
         self.title = title
 
     def print(self):
         """
-        @rtype: str
-        @return: track name in cue format
+        :rtype: str
+        :return: track name in cue format
         """
-        result = 'TITLE "{}"'.format(self.title)
+        result = 'TITLE "{title}"'.format(title=self.title)
         return result
 
 
-class CueMetadataPerformer:
+class CuePerformer:
     def __init__(self, performer):
         """
-        @type performer: str
-        @param performer: performer (artist) name
+        :type performer: str
+        :param performer: performer (artist) name
         """
         self.performer = performer
 
     def print(self):
         """
-        @rtype: str
-        @return: performer (artist) name in cue format
+        :rtype: str
+        :return: performer (artist) name in cue format
         """
-        result = 'PERFORMER "{}"'.format(self.performer)
+        result = 'PERFORMER "{performer}"'.format(performer=self.performer)
         return result
 
 
-class CueMetadataTrack:
-    def __init__(self, order_number, title, performer, index):
+class CueTrack:
+    def __init__(self, track):
         """
-        @type order_number: int
-        @param order_number: track number in file
-        @type title: str
-        @param title: track name
-        @type performer: str
-        @param performer: artist name
-        @type index: str
-        @param index: track offset from beginning, in seconds
+        :type track: (int, str, str, int)
+        :param track: track metadata - index, title, performer, offset
         """
-        self.order_number = order_number
-        self.title = CueMetadataTitle(title)
-        self.performer = CueMetadataPerformer(performer)
-        self.index = CueMetadataIndex(index)
+        self.index = track[0]
+        self.title = CueTitle(track[1])
+        self.performer = CuePerformer(track[2])
+        self.offset = CueOffset(track[3])
 
     def print(self):
         """
-        @rtype: str
-        @return: separate track metadata in cue format
+        :rtype: str
+        :return: separate track metadata in cue format
         """
         item = '    {}\n'
 
-        result = '  TRACK {} AUDIO\n'.format(self.order_number)
+        result = '  TRACK {index} AUDIO\n'.format(index=self.index)
         result += item.format(self.title.print())
         result += item.format(self.performer.print())
-        result += item.format(self.index.print())
+        result += item.format(self.offset.print())
 
         return result
 
@@ -85,39 +79,31 @@ class CueMetadataTrack:
 class CueMetadataTracklist:
     def __init__(self, tracklist):
         """
-        @type tracklist: []
+        :type tracklist: list[(int, str, str, int)]
         """
-        self.tracklist = []
-        n = 0
-        for track in tracklist:
-            n += 1
-            self.tracklist.append(CueMetadataTrack(n, track[0], track[1], track[2]))
+        self.tracklist = [CueTrack(track) for track in tracklist]
 
     def print(self):
         """
-        @rtype: str
-        @return: list of tracks in cue format
+        :rtype: str
+        :return: list of tracks in cue format
         """
-        result = ''
-        for track in self.tracklist:
-            result += track.print()
-
-        return result
+        return ''.join(track.print() for track in self.tracklist)
 
 
 class CueMetadataFile:
     def __init__(self, title, performer, tracklist):
         """
-        @type title: str
-        @param title: tracklist name
-        @type performer: str
-        @param performer: tracklist owner
-        @type tracklist: zip
-        @param tracklist: tracks' metadata
+        :type title: str
+        :param title: tracklist name
+        :type performer: str
+        :param performer: tracklist owner
+        :type tracklist: list[(int, str, str, int)]
+        :param tracklist: tracks' metadata
         """
         self.track_name = title
-        self.title = CueMetadataTitle(title)
-        self.performer = CueMetadataPerformer(performer)
+        self.title = CueTitle(title)
+        self.performer = CuePerformer(performer)
         self.tracklist = CueMetadataTracklist(tracklist)
 
     def print(self):
@@ -126,7 +112,7 @@ class CueMetadataFile:
         @result: playlist in cue format
         """
         line = '{}\n'
-        result = 'FILE "{}.mp3" MP3\n'.format(self.track_name)
+        result = 'FILE "{track}.mp3" MP3\n'.format(track=self.track_name)
         result += line.format(self.title.print())
         result += line.format(self.performer.print())
         result += self.tracklist.print()

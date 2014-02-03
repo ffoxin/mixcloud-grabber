@@ -1,22 +1,24 @@
 import os
-import math
+import sys
 from urllib import request, parse
 
 
 class Downloader:
     def __init__(self, dl_block_size=0x10000):
         """
-        @type dl_block_size: int
-        @param dl_block_size: block size while downloading file
+        :type dl_block_size: int
+        :param dl_block_size: block size while downloading file
         """
         self.block_size = dl_block_size
 
-    def save_as(self, url, file_name=None):
+    def save_as(self, url, file_name=None, size=sys.maxsize):
         """
-        @type url: str
-        @param url: file url to be downloaded
-        @type file_name: str
-        @param file_name: file name to be saved as
+        :type url: str
+        :param url: file url to be downloaded
+        :type file_name: str
+        :param file_name: file name to be saved as
+        :type size: int
+        :param size: file size to be downloaded
         """
         url_meta = request.urlopen(url)
         url_real = url_meta.geturl()
@@ -28,32 +30,21 @@ class Downloader:
         if not file_name:
             file_name = 'mixcloud_track.mp3'
 
-        # get file size
-        meta = url_meta.info()
-        meta_func = meta.getheaders if hasattr(meta, 'getheaders') else meta.get_all
-        meta_length = meta_func("Content-Length")
-        file_size = int(meta_length[0]) if meta_length else 0
-        print('File: {}'.format(file_name))
-        print('Size: {} bytes'.format(file_size))
-
         # save file
         with open(file_name, 'wb') as dl_file:
             downloaded = 0
-            size_length = int(math.log10(file_size)) + 1
-            while True:
+            '''while True:
                 buffer = url_meta.read(self.block_size)
                 if not buffer:
                     break
 
-                downloaded += len(buffer)
-                dl_file.write(buffer)
-
-                status = repr(downloaded).rjust(size_length)
-                if file_size:
-                    status += " [{0:.2f}%]".format(downloaded * 100 / file_size)
-                status += chr(13)
-                print(status, end="")
-            print()
-            print('Download finished')
+                if downloaded + len(buffer) > size:
+                    part = size - downloaded
+                    dl_file.write(buffer[:part])
+                    break
+                else:
+                    downloaded += len(buffer)
+                    dl_file.write(buffer)'''
+            print('{} - download finished'.format(file_name))
 
         return file_name
