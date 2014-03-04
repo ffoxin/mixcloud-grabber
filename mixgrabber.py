@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 __author__ = 'Vital Kolas'
-__version__ = '0.3.2'
-__date__ = '2013-11-04'
+__version__ = '0.4.0'
+__date__ = '2014-03-04'
 
 usage = """Usage:
 - navigate to target directory
@@ -15,33 +15,30 @@ Ex.:
     mixgrabber.py http://www.mixcloud.com/vplusplus/drifting-mind/"""
 
 import os
-import shutil
-import sys
+from shutil import rmtree
+from sys import argv
+from threading import Thread
+from urllib import request
 
-from mixgrabber.cuemeta import CueMetadataFile
-from mixgrabber.mixcloud import MixcloudTrack
-from mixgrabber.downloader import Downloader
-
-import threading
+from mixgrab.cue import CueFile
+from mixgrab.mixcloud import MixcloudTrack
+from mixgrab.downloader import Downloader
 
 
-def get_content_length(url):
-    r = request.urlopen(url)
-
+def get_content_length(content_url):
+    r = request.urlopen(content_url)
     meta = r.info()
     meta_func = meta.getheaders if hasattr(meta, 'getheaders') else meta.get_all
     meta_length = meta_func("Content-Length")
     file_size = int(meta_length[0]) if meta_length else 0
     return file_size
 
-from urllib import request
-
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
+    if len(argv) != 2:
         print(usage)
         exit()
 
-    mixcloud_url = sys.argv[1]
+    mixcloud_url = argv[1]
 
     # get track web page and extract metadata
     print('Loading track page..')
@@ -55,41 +52,34 @@ if __name__ == '__main__':
             for file in files:
                 os.unlink(os.path.join(root, file))
             for directory in dirs:
-                shutil.rmtree(os.path.join(root, directory))
+                rmtree(os.path.join(root, directory))
     else:
         os.mkdir(track_name)
     os.chdir(track_name)
 
-    track_file = track_name + '.mp3'
+    # prepare download params
+    track_file_name = track_name + '.mp3'
+    url = track.download_url
+    track_size = get_content_length(url)
+    thread_count = 100 if track_size else 1
+    thread_size = track_size // thread_count
 
-    url = track.download_link + '?start='
-    full_size = get_content_length(url + '0')
-    thread_count = 100
-    length = track.length
-    length_part = length // thread_count
-    stamps = [get_content_length(url + str(length_part * i)) for i in range(thread_count)]
-    stamps.append(0)
-    lengths = [stamps[i] - stamps[i + 1] for i in range(thread_count)]
-    print(stamps)
-    print(lengths)
+    with open(track_file_name, 'wb') as track_file:
+        dl = Downloader(url, track_file)
+        threads = []
+        for i in range(thread_count):
+            threads.append(Thread(
+                target=dl.save_as,
+                args=(i * thread_size, thread_size + (0 if i < thread_count - 1 else track_size % thread_size))
+            ))
 
-    dl = Downloader()
-    trs = []
-    for i in range(thread_count):
-        url_i = url + str(length_part * i)
-        file_i = track_file + '.part{:02}'.format(i)
-        trs.append(threading.Thread(
-            target=dl.save_as,
-            args=(url_i, file_i, lengths[i])
-        ))
+        for t in threads:
+            t.start()
 
-    for tr in trs:
-        tr.start()
-
-    for tr in trs:
-        tr.join()
+        for t in threads:
+            t.join()
 
     print('Finished')
 
     # create and save playlist
-    CueMetadataFile(track.name, track.owner, track.tracklist).save()
+    CueFile(track.name, track.owner, track.tracklist).save()

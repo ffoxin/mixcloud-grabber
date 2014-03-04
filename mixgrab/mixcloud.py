@@ -1,17 +1,18 @@
 import json
 import re
 from urllib import error, request
+from xml.etree import ElementTree
 
 
 class MixcloudTrack:
     def __init__(self, url, server_count=30):
         """
-        @type url: str
-        @param url: link to track at mixcloud.com
-        @type server_count: int
-        @param server_count: maximum server index
+        :type url: str
+        :param url: link to track at mixcloud.com
+        :type server_count: int
+        :param server_count: maximum server index
         """
-        self.download_link = ''
+        self.download_url = ''
         self.name = ''
         self.owner = ''
         self.tracklist = None
@@ -23,8 +24,8 @@ class MixcloudTrack:
 
     def page(self):
         """
-        @rtype: str
-        @return: html page
+        :rtype: str
+        :return: html page
         """
         with request.urlopen(self.track_url) as track_url:
             data = track_url.read()
@@ -33,10 +34,11 @@ class MixcloudTrack:
 
     def id(self):
         """
-        @rtype: str
-        @return: track id
+        :rtype: str
+        :return: track id
         """
         track_id = ''
+
         preview_url = re.search('(?<=\.mixcloud\.com/previews/)([^\.]+\.mp3)', self.page())
         if preview_url:
             track_id = preview_url.group(0).replace('mp3', 'm4a')
@@ -45,10 +47,10 @@ class MixcloudTrack:
 
     def get_download_link(self, server_count):
         """
-        @type server_count: number
-        @param server_count: maximum number of servers to be checked
-        @rtype: str
-        @return: direct link to mp3 file
+        :type server_count: number
+        :param server_count: maximum number of servers to be checked
+        :rtype: str
+        :return: direct link to mp3 file
         """
         download_template = 'http://stream{0}.mixcloud.com/c/m4a/64/' + self.id()
 
@@ -62,12 +64,12 @@ class MixcloudTrack:
             else:
                 break
 
-        self.download_link = download_link
+        self.download_url = download_link
 
     def load_playlist_info(self):
         """
-        @rtype: list
-        @return: list of (track, artist) pairs
+        :rtype: list
+        :return: list of (track, artist) pairs
         """
         with request.urlopen(self.meta_url) as meta_url:
             meta_data = meta_url.read()
@@ -76,10 +78,14 @@ class MixcloudTrack:
 
         self.name = meta['name']
         self.owner = meta['user']['username']
-        self.length = meta['audio_length']
 
         self.tracklist = [
-            (section['position'], section['track']['artist']['name'], section['track']['name'], int(0))
+            (section['position'],
+             section['track']['artist']['name'],
+             section['track']['name'],
+             # 2014-04-03 there is a bug on mixcloud service
+             # missed 'start_time' parameter within mp3 mixes
+             section['start_time'] if 'start_time' in section else 0)
             for section
             in meta['sections']
         ]
