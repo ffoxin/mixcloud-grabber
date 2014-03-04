@@ -39,9 +39,9 @@ class MixcloudTrack:
         """
         track_id = ''
 
-        preview_url = re.search('(?<=\.mixcloud\.com/previews/)([^\.]+\.mp3)', self.page())
+        preview_url = re.search('(?<=\.mixcloud\.com/previews/)([^\.]+\.)(?=mp3)', self.page())
         if preview_url:
-            track_id = preview_url.group(0).replace('mp3', 'm4a')
+            track_id = preview_url.group(0)
 
         return track_id
 
@@ -52,7 +52,15 @@ class MixcloudTrack:
         :rtype: str
         :return: direct link to mp3 file
         """
-        download_template = 'http://stream{0}.mixcloud.com/c/m4a/64/' + self.id()
+
+        track_id = self.id()
+        if track_id.startswith('7/f/2/7'):
+            download_template = 'http://stream{0}.mixcloud.com/c/m4a/64/' + track_id + 'm4a'
+        elif track_id.startswith('6/c/1/f'):
+            download_template = 'http://stream{0}.mixcloud.com/c/originals/' + track_id + 'mp3'
+        else:
+            print('Unknown id format; try use default')
+            download_template = 'http://stream{0}.mixcloud.com/c/m4a/64/' + track_id + 'm4a'
 
         download_link = ''
         for i in range(server_count):
