@@ -17,12 +17,12 @@ Ex.:
 import os
 from shutil import rmtree
 from sys import argv
-from threading import Thread
 from urllib import request
+import math
 
 from mixgrab.cue import CueFile
 from mixgrab.mixcloud import MixcloudTrack
-from mixgrab.downloader import Downloader
+from mixgrab.downloader import DownloadWorker
 
 
 def get_content_length(content_url):
@@ -61,16 +61,15 @@ if __name__ == '__main__':
     track_file_name = track_name + '.mp3'
     url = track.download_url
     track_size = get_content_length(url)
-    thread_count = 100 if track_size else 1
-    thread_size = track_size // thread_count
+    thread_count = 100
+    thread_size = min(track_size // thread_count, 0x100000)
+    job_count = math.ceil(track_size / thread_size)
 
     with open(track_file_name, 'wb') as track_file:
-        dl = Downloader(url, track_file)
         threads = []
         for i in range(thread_count):
-            threads.append(Thread(
-                target=dl.save_as,
-                args=(i * thread_size, thread_size + (0 if i < thread_count - 1 else track_size % thread_size))
+            threads.append(DownloadWorker(
+                job_count, thread_size, url, track_file
             ))
 
         for t in threads:
